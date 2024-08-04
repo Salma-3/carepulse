@@ -65,3 +65,16 @@ export const registerPatient = async ({ identificationDocument, ...patient }: Re
         console.log(error)
     }
 }
+
+export const getPatient = async (userId: string) => {
+    try {
+        const patients = await database.listDocuments(databaseId, collectionId, [ Query.equal('userId', userId) ]);
+
+        if(!patients.documents[0])
+           throw new Error('Not Found');
+        
+        return parseStringify(patients.documents[0]);
+    } catch (error) {
+        console.log(error)
+    }
+}
