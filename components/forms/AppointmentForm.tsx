@@ -11,16 +11,19 @@ import { useRouter } from "next/navigation"
 import { Doctors } from "@/constants"
 import { SelectItem } from "../ui/select"
 import Image from "next/image"
-import { createAppointment } from "@/lib/actions/appointment.actions"
+import { createAppointment, updateAppointment } from "@/lib/actions/appointment.actions"
+import { Appointment } from "@/types/appwrite.types"
 
 type FormProps = {
     type: 'create' | 'cancel' | 'schedule';
     userId: string;
     patientId: string;
+    appointment?: Appointment;
+    setOpen?: (open: boolean) => void;
 }
 
-const AppointmentForm = ({ userId, patientId, type }: FormProps) => {
-  
+const AppointmentForm = ({ userId, patientId, type, appointment, setOpen }: FormProps) => {
+  console.log(appointment)
   const AppointmentFormValidation = getAppointmentSchema(type)
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false);
@@ -28,11 +31,11 @@ const AppointmentForm = ({ userId, patientId, type }: FormProps) => {
   const form = useForm<z.infer<typeof AppointmentFormValidation>>({
     resolver: zodResolver(AppointmentFormValidation),
     defaultValues: {
-      primaryPhysician: '',
-      schedule: new Date(),
-      note: '',
-      reason:'',
-      cancellationReason: ''
+      primaryPhysician: appointment?.primaryPhysician || '',
+      schedule: appointment ? new Date(appointment.schedule) : new Date(),
+      note: appointment?.note || '' ,
+      reason: appointment?.reason || '',
+      cancellationReason: appointment?.cancellationReason || ''
     },
   })
 
@@ -53,6 +56,7 @@ const AppointmentForm = ({ userId, patientId, type }: FormProps) => {
   
 
   const onSubmit = async (values: z.infer<typeof AppointmentFormValidation>) => {
+    console.log('action type', type)
     setIsLoading(true);
     let status: Status;
 
@@ -85,6 +89,24 @@ const AppointmentForm = ({ userId, patientId, type }: FormProps) => {
             form.reset();
             return router.push(`/patients/${userId}/new-appointment/success?appointmentId=${appointment.$id}`)
         }
+      } else {
+        const appointmentToUpdate = {
+          userId,
+          appointmentId: appointment?.$id!,
+          type,
+          appointment: {
+            primaryPhysician: appointment?.primaryPhysician,
+            schedule: new Date(values?.schedule),
+            status: status as Status,
+            cancellationReason: values?.cancellationReason
+          }
+        }
+
+        const updatedAppointment = await updateAppointment(appointmentToUpdate)
+        if(updatedAppointment){
+          setOpen && setOpen(false);
+          form.reset()
+        }
       }
     } catch (error) {
       console.log(error)
@@ -96,10 +118,10 @@ const AppointmentForm = ({ userId, patientId, type }: FormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 flex-1">
-        <section className="mb-12 space-y-4">
+        {type === 'create' && <section className="mb-12 space-y-4">
             <h1 className='header'>New Appointment</h1>
             <p className="text-dark-700">Request a new appointment in 10 seconds</p>
-        </section>
+        </section>}
         { type !== 'cancel' && (
             <>
               <CustomFormField 

@@ -1,6 +1,6 @@
 'use server';
 import { ID, Query } from "node-appwrite"
-import { BUCKET_ID, database, DATBASE_ID, PATIENT_COLLECTION_ID, ENDPOINT, storage, users, PROJECT_ID } from "@/lib/appwrite.config"
+import { database, storage, users } from "@/lib/appwrite.config"
 import { parseStringify } from "@/lib/utils";
 import { InputFile } from 'node-appwrite/file';
 
@@ -8,7 +8,7 @@ const bucketId = process.env.NEXT_PUBLIC_BUCKET_ID!;
 const projectId = process.env.PROJECT_ID!;
 const databaseId = process.env.DATABASE_ID!;
 const endpoint = process.env.NEXT_PUBLIC_ENDPOINT!;
-const collectionId = process.env.PATIENT_COLLECTION_ID!;
+const patientCollectionId = process.env.PATIENT_COLLECTION_ID!;
 
 export const createUser = async (user: CreateUserParams) => {
     try {
@@ -53,7 +53,7 @@ export const registerPatient = async ({ identificationDocument, ...patient }: Re
 
         const newPatient = await database.createDocument(
             databaseId, 
-            collectionId, 
+            patientCollectionId, 
             ID.unique(), {
             identificationDocumentId: file?.$id || null,
             identificationDocumentUrl: `${endpoint}/storage/buckets/${bucketId}/files/${file?.$id}/view?project=${projectId}`,
@@ -68,10 +68,8 @@ export const registerPatient = async ({ identificationDocument, ...patient }: Re
 
 export const getPatient = async (userId: string) => {
     try {
-        const patients = await database.listDocuments(databaseId, collectionId, [ Query.equal('userId', userId) ]);
-
-        if(!patients.documents[0])
-           throw new Error('Not Found');
+        const patients = await database.listDocuments(databaseId, patientCollectionId, [Query.contains('userId', userId)])
+        console.log('patients', patients)
         
         return parseStringify(patients.documents[0]);
     } catch (error) {
